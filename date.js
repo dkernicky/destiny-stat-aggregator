@@ -19,8 +19,8 @@ function getMonthsBetween(date1, date2) {
         date2 = new Date(date2);
         return Promise.resolve({
             periodType: 'Monthly',
-            monthstart: `${(new Date(date1.getFullYear(), date1.getMonth() + 1, date1.getDate()).toJSON()).substring(0, 7)}`,
-            monthend: `${(new Date(date2.getFullYear(), date2.getMonth(), date2.getDate()).toJSON()).substring(0, 7)}`
+            monthstart: `${(new Date(date1.getFullYear(), date1.getMonth() + 1, 1).toJSON()).substring(0, 7)}`,
+            monthend: `${(new Date(date2.getFullYear(), date2.getMonth() - 1, 1).toJSON()).substring(0, 7)}`
         });
     // }
 }

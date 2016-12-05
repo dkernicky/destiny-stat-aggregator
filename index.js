@@ -133,8 +133,9 @@ function getBetterStats(character, options, mode) {
     let periodField = options.periodType.charAt(0).toLowerCase() + options.periodType.slice(1);
     return get(apis.getStats(membershipType, character.membershipId, character.characterId), options)
     .then(results => {
-        logger.debug('jkhkh')
-        logger.trace(`raw results for ${JSON.stringify(options)}: ${JSON.stringify(results)}`);
+        //logger.trace(`raw results for ${JSON.stringify(options)}: ${JSON.stringify(results)}`);
+        logger.trace(options);
+        //logger.trace(results);
         if (results[modeField][periodField.toLowerCase()]) {
             logger.debug(results[modeField][periodField.toLowerCase()]);
             return Promise.resolve(results[modeField][periodField.toLowerCase()].map(result => {
@@ -187,7 +188,6 @@ function betterStats(dateStart, dateEnd, modes) {
     .then(periodData => {
         let promises = [];
         _.forEach(periodData, period => {
-            logger.debug('in for each');
             promises.push(getBetterStats(chars[0], period, modes));
         });
         return Promise.all(promises);
@@ -219,7 +219,6 @@ function getStatsForRange(dateStart, dateEnd, modes) {
     .then(options => {
         let promises = [];
         _.forEach(options, option => {
-            logger.debug('in for each');
             if (option !== {}) {
                 promises.push(getStats(chars[0], option));
             }
@@ -227,8 +226,8 @@ function getStatsForRange(dateStart, dateEnd, modes) {
         return Promise.all(promises);
     })
     .then(result => {
-        logger.debug(result);
-        logger.trace('stats: ' + JSON.stringify(result));
+        // logger.debug(result);
+        // logger.trace('stats: ' + JSON.stringify(result));
         return Promise.resolve(result.reduce((a, b) => {
             // console.log('reducing: a' + JSON.stringify(a));
             // console.log('reducing: b' + JSON.stringify(b));
@@ -243,8 +242,8 @@ function getStatsForRange(dateStart, dateEnd, modes) {
         }));
     })
     .then(result => {
-        console.log('done');
-        console.log(result);
+         console.log('done');
+        // console.log(result);
     });
 }
 
