@@ -45,52 +45,6 @@ function getAggregateActivityStats(character, mode, dateStart, dateEnd) {
     });
 }
 
-function getStats(character, options) {
-    logger.trace('getStats ENTER');
-    let modeField = options.modes.charAt(0).toLowerCase() + options.modes.slice(1);
-    let periodField = options.periodType.charAt(0).toLowerCase() + options.periodType.slice(1);
-    return get(apis.getStats(membershipType, character.membershipId, character.characterId), options)
-    .then(results => {
-        logger.debug('jkhkh')
-        logger.trace(`raw results for ${JSON.stringify(options)}: ${JSON.stringify(results)}`);
-        if (results[modeField][periodField.toLowerCase()]) {
-            return Promise.resolve(results[modeField][periodField.toLowerCase()].map(result => {
-                //console.log(result)
-                return {
-                    options: options,
-                    games: result.values.activitiesEntered.basic.value,
-                    wins: result.values.activitiesWon.basic.value,
-                    kills: result.values.kills.basic.value,
-                    deaths: result.values.deaths.basic.value,
-                    assists: result.values.assists.basic.value
-                }
-            }));
-        } else {
-            return Promise.resolve([{
-                options: options,
-                games: 0,
-                wins: 0,
-                kills: 0,
-                deaths: 0,
-                assists: 0
-            }]);
-        }
-    })
-    .then(results => {
-        if (results) {
-            return Promise.resolve(results.reduce((a, b) => {
-                return {
-                    games: a.games + b.games,
-                    wins: a.wins + b.wins,
-                    kills: a.kills + b.kills,
-                    deaths: a.deaths + b.deaths,
-                    assists: a.assists + b.assists
-                };
-            }));
-        }
-    });
-}
-
 function get(f, q) {
     logger.trace('request url: ' + f);
     let query = q ? q : {};
@@ -141,6 +95,7 @@ function getBetterStats(character, options, mode) {
             return Promise.resolve(results[modeField][periodField.toLowerCase()].map(result => {
                 //console.log(result)
                 return {
+                    character: character,
                     options: options,
                     games: result.values.activitiesEntered.basic.value,
                     wins: result.values.activitiesWon.basic.value,
@@ -151,6 +106,7 @@ function getBetterStats(character, options, mode) {
             }));
         } else {
             return Promise.resolve([{
+                character: character,
                 options: options,
                 games: 0,
                 wins: 0,
@@ -164,6 +120,7 @@ function getBetterStats(character, options, mode) {
         if (results) {
             return Promise.resolve(results.reduce((a, b) => {
                 return {
+                    character: character,
                     games: a.games + b.games,
                     wins: a.wins + b.wins,
                     kills: a.kills + b.kills,
@@ -172,6 +129,26 @@ function getBetterStats(character, options, mode) {
                 };
             }));
         }
+    });
+}
+
+function getCharacterStats(character, periodData, modes) {
+    let promises = [];
+    _.forEach(periodData, period => {
+        promises.push(getBetterStats(character, period, modes));
+    });
+    return Promise.all(promises)
+    .then(stats => {
+        return Promise.resolve(stats.reduce((a, b) => {
+            return {
+                character: character,
+                games: a.games + b.games,
+                wins: a.wins + b.wins,
+                kills: a.kills + b.kills,
+                deaths: a.deaths + b.deaths,
+                assists: a.assists + b.assists
+            };
+        }));
     });
 }
 
@@ -187,64 +164,28 @@ function betterStats(dateStart, dateEnd, modes) {
     })
     .then(periodData => {
         let promises = [];
-        _.forEach(periodData, period => {
-            promises.push(getBetterStats(chars[0], period, modes));
+        _.forEach(chars, character => {
+            promises.push(getCharacterStats(character, periodData, modes));
         });
         return Promise.all(promises);
     })
+    .then()
+    // .then(result => {
+    //     return Promise.resolve(result.reduce((a, b) => {
+    //         return {
+    //             games: a.games + b.games,
+    //             wins: a.wins + b.wins,
+    //             kills: a.kills + b.kills,
+    //             deaths: a.deaths + b.deaths,
+    //             assists: a.assists + b.assists
+    //         };
+    //     }));
+    // })
     .then(result => {
         logger.info('done');
         logger.info(result);
-    })
-}
 
-function getStatsForRange(dateStart, dateEnd, modes) {
-    let chars = [];
-    getAccount(`${name}`)
-    .then(membershipId => {
-        //console.log('membershipId: ' + membershipId);
-        //console.log(getCharacter(membershipId));
-        return getCharacter(membershipId);
     })
-    .then((characters) => {
-        chars = characters;
-        return dateUtils.doSomething(dateStart, dateEnd);
-    })
-    .then(options => {
-        return Promise.resolve(options.map(option => {
-            option.modes = modes;
-            return option;
-        }));
-    })
-    .then(options => {
-        let promises = [];
-        _.forEach(options, option => {
-            if (option !== {}) {
-                promises.push(getStats(chars[0], option));
-            }
-        });
-        return Promise.all(promises);
-    })
-    .then(result => {
-        // logger.debug(result);
-        // logger.trace('stats: ' + JSON.stringify(result));
-        return Promise.resolve(result.reduce((a, b) => {
-            // console.log('reducing: a' + JSON.stringify(a));
-            // console.log('reducing: b' + JSON.stringify(b));
-
-            return {
-                games: a.games + b.games,
-                wins: a.wins + b.wins,
-                kills: a.kills + b.kills,
-                deaths: a.deaths + b.deaths,
-                assists: a.assists + b.assists
-            };
-        }));
-    })
-    .then(result => {
-         console.log('done');
-        // console.log(result);
-    });
 }
 
 
