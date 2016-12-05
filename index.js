@@ -46,14 +46,13 @@ function getAggregateActivityStats(character, mode, dateStart, dateEnd) {
 }
 
 function getStats(character, options) {
+    logger.trace('getStats ENTER');
     let modeField = options.modes.charAt(0).toLowerCase() + options.modes.slice(1);
     let periodField = options.periodType.charAt(0).toLowerCase() + options.periodType.slice(1);
     return get(apis.getStats(membershipType, character.membershipId, character.characterId), options)
     .then(results => {
-        // console.log(options);
-        // console.log(results[modeField]);
-        // console.log(results[modeField] === {});
-        // console.log(results[modeField]);
+        logger.debug('jkhkh')
+        logger.trace(`raw results for ${JSON.stringify(options)}: ${JSON.stringify(results)}`);
         if (results[modeField][periodField.toLowerCase()]) {
             return Promise.resolve(results[modeField][periodField.toLowerCase()].map(result => {
                 //console.log(result)
@@ -124,9 +123,83 @@ function get(f, q) {
 //     console.log('characterId\'s: ' + JSON.stringify(characters));
 //     getStats(characters[0], options);
 // });
-let chars = [];
+//let chars = [];
+
+function getBetterStats(character, options, mode) {
+    logger.trace('getStats ENTER');
+    options.modes = mode;
+
+    let modeField = options.modes.charAt(0).toLowerCase() + options.modes.slice(1);
+    let periodField = options.periodType.charAt(0).toLowerCase() + options.periodType.slice(1);
+    return get(apis.getStats(membershipType, character.membershipId, character.characterId), options)
+    .then(results => {
+        logger.debug('jkhkh')
+        logger.trace(`raw results for ${JSON.stringify(options)}: ${JSON.stringify(results)}`);
+        if (results[modeField][periodField.toLowerCase()]) {
+            logger.debug(results[modeField][periodField.toLowerCase()]);
+            return Promise.resolve(results[modeField][periodField.toLowerCase()].map(result => {
+                //console.log(result)
+                return {
+                    options: options,
+                    games: result.values.activitiesEntered.basic.value,
+                    wins: result.values.activitiesWon.basic.value,
+                    kills: result.values.kills.basic.value,
+                    deaths: result.values.deaths.basic.value,
+                    assists: result.values.assists.basic.value
+                }
+            }));
+        } else {
+            return Promise.resolve([{
+                options: options,
+                games: 0,
+                wins: 0,
+                kills: 0,
+                deaths: 0,
+                assists: 0
+            }]);
+        }
+    })
+    .then(results => {
+        if (results) {
+            return Promise.resolve(results.reduce((a, b) => {
+                return {
+                    games: a.games + b.games,
+                    wins: a.wins + b.wins,
+                    kills: a.kills + b.kills,
+                    deaths: a.deaths + b.deaths,
+                    assists: a.assists + b.assists
+                };
+            }));
+        }
+    });
+}
+
+function betterStats(dateStart, dateEnd, modes) {
+    // get account array
+    let chars = [];
+    // let name = `${name}`;
+    getAccount(`${name}`)
+    .then(getCharacter)
+    .then(characterData => {
+        chars = characterData;
+        return dateUtils.doSomething(dateStart, dateEnd);
+    })
+    .then(periodData => {
+        let promises = [];
+        _.forEach(periodData, period => {
+            logger.debug('in for each');
+            promises.push(getBetterStats(chars[0], period, modes));
+        });
+        return Promise.all(promises);
+    })
+    .then(result => {
+        logger.info('done');
+        logger.info(result);
+    })
+}
 
 function getStatsForRange(dateStart, dateEnd, modes) {
+    let chars = [];
     getAccount(`${name}`)
     .then(membershipId => {
         //console.log('membershipId: ' + membershipId);
@@ -175,8 +248,11 @@ function getStatsForRange(dateStart, dateEnd, modes) {
     });
 }
 
-getStatsForRange('2014-09-14', '2016-11-15', 'AllPvP');
-logger.info('TESTING');
+
+
+// getStatsForRange('2014-09-14', '2016-11-15', 'AllPvP');
+betterStats('2014-09-14', '2016-11-15', 'AllPvP');
+// logger.info('TESTING');
 // let d1 = '2015-13-02';
 // let date = new Date('2015-11-02');
 // console.log(new Date(d1.substring(0, 4), d1.substring(5, 7), 0).getDate());
