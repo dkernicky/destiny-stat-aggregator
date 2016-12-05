@@ -1,0 +1,21 @@
+{
+  "name": "stats-js",
+  "version": "1.0.0",
+  "description": "Destiny stat aggregator",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run test"
+  },
+  "author": "daniel.kernicky@gmail. om",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.4.6",
+    "lodash": "^4.17.2",
+    "log4js": "^1.0.1",
+    "superagent": "3.0.0"
+  },
+  "devDependencies": {
+    "expect": "^1.20.2",
+    "mocha": "^3.2.0"
+  }
+}
