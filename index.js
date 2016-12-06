@@ -15,7 +15,7 @@ table = new Table({ head: fields });
 function getStatsByDisplayName(dateStart, dateEnd, mode, name) {
     return getStats(dateStart, dateEnd, mode, name)
     .then(overall => {
-         //logger.info(overall);
+         logger.info(overall);
         // let stat = stats[0];
         // let arr = Object.keys(stat)
         // logger.info(arr);
@@ -79,6 +79,8 @@ function getStatsByDisplayName(dateStart, dateEnd, mode, name) {
         return Promise.resolve(obj[0]);
     })
     .then(result => {
+        logger.info(result);
+
         let arr = Object.keys(result).map(key => {
                 return result[key]
 

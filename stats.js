@@ -134,6 +134,7 @@ function getBetterStats(character, options, mode) {
                     assists: a.assists + b.assists
                 };
             }));
+            return Promise.resolve(results);
         }
     });
 }
@@ -148,6 +149,7 @@ function getCharacterStats(character, periodData, modes) {
     });
     return Promise.all(promises)
     .then(stats => {
+        logger.debug(stats);
         return Promise.resolve(stats.reduce((a, b) => {
             return {
                 character: character,
@@ -173,7 +175,7 @@ function betterStats(dateStart, dateEnd, modes, name) {
     })
     .then(periodData => {
         let promises = [];
-        //logger.trace('period: ' + periodData);
+        logger.trace(periodData);
         _.forEach(chars, character => {
             promises.push(getCharacterStats(character, periodData, modes));
         });
