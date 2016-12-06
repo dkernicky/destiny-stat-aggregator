@@ -1,12 +1,12 @@
 // returns full years + partial months
 function doSomething(date1, date2) {
-    if (date1.substring(0, 4) !== date2.substring(0, 4)) {
+    // if (date1.substring(0, 4) !== date2.substring(0, 4)) {
         return Promise.all([
             getDaysBetween(date1, null),
             getMonthsBetween(date1, date2),
             getDaysBetween(null, date2)
         ]);
-    }
+    // }
 }
 
 function getMonthsBetween(date1, date2) {
@@ -26,6 +26,7 @@ function getMonthsBetween(date1, date2) {
 }
 
 function getDaysBetween(date1, date2) {
+    // logger.info('getDaysBetween ENTER');
     if (date1 === null) {
         // get data from beginning of month to date2
         return Promise.resolve({
