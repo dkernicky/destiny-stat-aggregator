@@ -1,6 +1,7 @@
 let logger = require('./logger')('fullstats');
 let apis = require('./platform_apis');
 let superagent = require('superagent');
+let Promise = require('bluebird');
 
 function get(f, q) {
     logger.trace('request url: ' + f);
@@ -39,34 +40,79 @@ function getActivityHistory(playerData, mode) {
             mode: mode
         };
         let activities = [];
-        promises.push(getCharacterActivities(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
+        promises.push(recurse(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
     })
     return Promise.all(promises);
+    // .then(activities => {
+    //     logger.trace(activities);
+    //     // activities.forEach(activityGroup => {
+    //     //     activityGroup.forEach(activity => {
+    //     //         getPostGameCarnage(activity.activityDetails.instanceId)
+    //     //         .then(result => {
+    //     //             //logger.error(result);
+    //     //             activity.entries = result.entries;
+    //     //             activity.teams = result.teams;
+    //     //             logger.error(activity);
+    //     //         })
+    //     //     });
+    //     // });
+    //     // return Promise.resolve(activities);
+    // });
+}
+
+function recurse(activities, membershipType, membershipId, characterId, options) {
+    return get(apis.getActivityHistory(membershipType, membershipId, characterId), options)
+    .then(results => {
+        options.page += 1;
+        if (results.data.activities) {
+
+            activities = activities.concat(results.data.activities);
+            return recurse(activities, membershipType, membershipId, characterId, options);
+        } else {
+            logger.info(activities.length);
+            let promises = [];
+            activities.forEach(activity => {
+                promises.push(getPostGameCarnage(activity, activity.activityDetails.instanceId));
+            });
+            return Promise.all(promises);
+        }
+    });
 }
 
 function getCharacterActivities(activities, membershipType, membershipId, characterId, options) {
-        return get(apis.getActivityHistory(membershipType, membershipId, characterId), options)
-        .then(results => {
-            options.page += 1;
-            if (results !== undefined && results.data.activities) {
-                //logger.info(activities.data);
-                //logger.debug(activities.data === {});
-                activities = activities.concat(results.data.activities);
-                return getCharacterActivities(activities, membershipType, membershipId, characterId, options);
-            } else {
-                logger.info('done');
-                logger.info(activities.length);
-                logger.info(options);
-                return Promise.resolve(activities);
-            }
-        }).catch(err => {
-            logger.error(err);
-            getPostGameCarnage();
-        })
+        // return recurse(activities, membershipType, membershipId, characterId, options)
+        // .then(activities => {
+            let promises = [];
+            activities.forEach(activity => {
+                if (!activity.activityDetails) {
+                    logger.error(activity);
+                }
+                promises.push([getPostGameCarnage(activity, activity.activityDetails.instanceId)]);
+            })
+            //getPostGameCarnage()
+            return Promise.all(promises);
+        // })
+        // .catch(err => {
+        //     logger.error(err);
+        //     //getPostGameCarnage();
+        // })
 }
 
-function getPostGameCarnage() {
-
+function getPostGameCarnage(activity, activityId) {
+    return get(apis.getCarnage(activityId))
+    .then(result => {
+         logger.info('OHHHH HERRRRO CROOOTA');
+         logger.debug(result);
+        // activity.entries = result.entries;
+        // activity.teams = result.teams;
+        return Promise.resolve({
+            period: activity.period,
+            activityDetails: activity.activityDetails,
+            values: activity.values,
+            entries: result.data.entries,
+            teams: result.data.teams
+        });
+    });
 }
 
 function getAccount(name) {
@@ -114,8 +160,9 @@ function entry() {
         return getActivityHistory(result, mode);
     })
     .then(result => {
+        logger.warn(result);
         logger.debug(result[0][0]);
-        logger.debug(result[0][3].values.standing);
+        //logger.debug(result[0][3].values.standing);
 
     });
 }
