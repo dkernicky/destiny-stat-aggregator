@@ -17,18 +17,11 @@ function get(f, q) {
                     console.log('err: ' + err);
                     reject(err);
                 } else {
-                    //console.log(res.header['x-selfurl']);
-                    //console.log('done');
-                    //logger.info(res);
                     resolve(res.body.Response);
                 }
             });
     });
 }
-
-// function getActivityHistory(count, definitions, characterId, page, destinyMembershipId, membershipType, mode) {
-//
-// }
 
 function getActivityHistory(playerData, mode) {
     let promises = [];
@@ -43,21 +36,6 @@ function getActivityHistory(playerData, mode) {
         promises.push(recurse(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
     })
     return Promise.all(promises);
-    // .then(activities => {
-    //     logger.trace(activities);
-    //     // activities.forEach(activityGroup => {
-    //     //     activityGroup.forEach(activity => {
-    //     //         getPostGameCarnage(activity.activityDetails.instanceId)
-    //     //         .then(result => {
-    //     //             //logger.error(result);
-    //     //             activity.entries = result.entries;
-    //     //             activity.teams = result.teams;
-    //     //             logger.error(activity);
-    //     //         })
-    //     //     });
-    //     // });
-    //     // return Promise.resolve(activities);
-    // });
 }
 
 function recurse(activities, membershipType, membershipId, characterId, options) {
@@ -72,7 +50,7 @@ function recurse(activities, membershipType, membershipId, characterId, options)
             logger.info(activities.length);
             let promises = [];
             activities.forEach(activity => {
-                promises.push(getPostGameCarnage(activity, activity.activityDetails.instanceId));
+                promises.push(addPostGameCarnage(activity, activity.activityDetails.instanceId));
             });
             return Promise.all(promises);
         }
@@ -80,31 +58,19 @@ function recurse(activities, membershipType, membershipId, characterId, options)
 }
 
 function getCharacterActivities(activities, membershipType, membershipId, characterId, options) {
-        // return recurse(activities, membershipType, membershipId, characterId, options)
-        // .then(activities => {
-            let promises = [];
-            activities.forEach(activity => {
-                if (!activity.activityDetails) {
-                    logger.error(activity);
-                }
-                promises.push([getPostGameCarnage(activity, activity.activityDetails.instanceId)]);
-            })
-            //getPostGameCarnage()
-            return Promise.all(promises);
-        // })
-        // .catch(err => {
-        //     logger.error(err);
-        //     //getPostGameCarnage();
-        // })
+    let promises = [];
+    activities.forEach(activity => {
+        if (!activity.activityDetails) {
+            logger.error(activity);
+        }
+        promises.push([addPostGameCarnage(activity, activity.activityDetails.instanceId)]);
+    })
+    return Promise.all(promises);
 }
 
-function getPostGameCarnage(activity, activityId) {
+function addPostGameCarnage(activity, activityId) {
     return get(apis.getCarnage(activityId))
     .then(result => {
-         logger.info('OHHHH HERRRRO CROOOTA');
-         logger.debug(result);
-        // activity.entries = result.entries;
-        // activity.teams = result.teams;
         return Promise.resolve({
             period: activity.period,
             activityDetails: activity.activityDetails,
@@ -135,7 +101,6 @@ function getCharacter(membershipInfo) {
         return Promise.resolve({
             account: membershipInfo,
             characters: result.data.characters.map((character) => {
-                //logger.trace('character info: ' + JSON.stringify(result.data.characters));
                 return {
                     characterId: character.characterBase.characterId,
                     classType: character.characterBase.classType
