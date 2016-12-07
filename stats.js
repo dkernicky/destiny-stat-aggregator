@@ -3,7 +3,9 @@ let superagent = require('superagent');
 let Promise = require('bluebird');
 let dateUtils = require('./date');
 let _ = require('lodash');
-let logger = require('./logger')('index');
+let logger = require('./logger')('stats');
+
+let debug_bool = false;
 
 let name = 'Crimson_Wrath';
 let membershipType = 2;
@@ -88,6 +90,8 @@ function get(f, q) {
 function getBetterStats(character, options, mode) {
     logger.trace('getStats ENTER');
     options.modes = mode;
+    options.groups = 'General,Weapons,Medals,Enemies'
+    //options.groups = 'Medals';
 
     let modeField = options.modes.charAt(0).toLowerCase() + options.modes.slice(1);
     let periodField = options.periodType.charAt(0).toLowerCase() + options.periodType.slice(1);
@@ -95,9 +99,22 @@ function getBetterStats(character, options, mode) {
     .then(results => {
         //logger.trace(`raw results for ${JSON.stringify(options)}: ${JSON.stringify(results)}`);
         //logger.trace(options);
-        //logger.trace(results);
+        if (periodField === 'daily') {
+            logger.info(results.allPvP.daily);
+        } else {
+            logger.debug(results.allPvP.monthly[0].values.allMedalsEarned);
+        }
+
         if (results != undefined && results[modeField][periodField.toLowerCase()]) {
-            //logger.debug(results[modeField][periodField.toLowerCase()]);
+             //logger.debug(results[modeField][periodField.toLowerCase()]);
+             //logger.debug(results[modeField][periodField.toLowerCase()][0].values.dailyMedalsEarned);
+            // logger.debug(results[modeField][periodField.toLowerCase()][0].values.combatRating);
+            // logger.debug(results[modeField][periodField.toLowerCase()][0].values.allParticipantsCount);
+            // logger.debug(results[modeField][periodField.toLowerCase()][0].values.allParticipantsScore);
+
+
+
+
             return Promise.resolve(results[modeField][periodField.toLowerCase()].map(result => {
                 //console.log(result)
                 return {

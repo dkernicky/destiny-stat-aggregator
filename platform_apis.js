@@ -8,8 +8,8 @@ function getAccountSummary(membershipType, destinyMembershipId) {
 }
 
 // GET Gets activity history stats for indicated character.
-function getActivityHistory(membershipType, destinyMembershipId, characterId, mode, dateStart, dateEnd) {
-    return `${getBaseUrl()}/Stats/ActivityHistory/${membershipType}/${destinyMembershipId}/${characterId}/?mode=${mode}`;
+function getActivityHistory(membershipType, destinyMembershipId, characterId) {
+    return `${getBaseUrl()}/Stats/ActivityHistory/${membershipType}/${destinyMembershipId}/${characterId}/`;
 }
 
 // GET Returns information about all items on the for the supplied Destiny Membership ID, and a minimal set of character information so that it can be used.
@@ -50,10 +50,15 @@ function getStats(membershipType, destinyMembershipId, characterId) {
     return `${getBaseUrl()}/Stats/${membershipType}/${destinyMembershipId}/${characterId}/`;
 }
 
+function getCarnage(activityId) {
+    return `${getBaseUrl()}/Stats/PostGameCarnageReport/${activityId}/`;
+}
+
 module.exports = {
     getMembershipId,
     getItems,
     getActivityHistory,
     getAggregateActivityStats,
-    getStats
+    getStats,
+    getCarnage
 };

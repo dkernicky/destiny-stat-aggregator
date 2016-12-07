@@ -38,26 +38,26 @@ function getActivityHistory(playerData, mode) {
             page: 0,
             mode: mode
         };
-        promises.push(getCharacterActivities(playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
+        let activities = [];
+        promises.push(getCharacterActivities(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
     })
     return Promise.all(promises);
 }
 
-function getCharacterActivities(membershipType, membershipId, characterId, options) {
+function getCharacterActivities(activities, membershipType, membershipId, characterId, options) {
         return get(apis.getActivityHistory(membershipType, membershipId, characterId), options)
-        .then(activities => {
-             //logger.info(activities);
-            if (activities === undefined) {
-                logger.debug('IT IS UNDEFINED')
-            }
+        .then(results => {
             options.page += 1;
-            if (activities !== undefined && activities.data.activities) {
+            if (results !== undefined && results.data.activities) {
                 //logger.info(activities.data);
                 //logger.debug(activities.data === {});
-                return getCharacterActivities(membershipType, membershipId, characterId, options);
+                activities = activities.concat(results.data.activities);
+                return getCharacterActivities(activities, membershipType, membershipId, characterId, options);
             } else {
                 logger.info('done');
+                logger.info(activities.length);
                 logger.info(options);
+                return Promise.resolve(activities);
             }
         }).catch(err => {
             logger.error(err);
@@ -107,12 +107,16 @@ function getPlayerInfo(name) {
 function entry() {
     let name = 'Crimson_Wrath';
     let mode = 'TrialsOfOsiris';
+    mode = 'AllPvP';
+    mode = 'Lockdown';
     getPlayerInfo(name)
     .then((result) => {
         return getActivityHistory(result, mode);
     })
     .then(result => {
-        logger.debug(result[0].data.activities);
+        logger.debug(result[0][0]);
+        logger.debug(result[0][3].values.standing);
+
     });
 }
 entry();
