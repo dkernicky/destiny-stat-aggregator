@@ -33,19 +33,19 @@ function getActivityHistory(playerData, mode) {
             mode: mode
         };
         let activities = [];
-        promises.push(recurse(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
+        promises.push(getCharacterActivities(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
     })
     return Promise.all(promises);
 }
 
-function recurse(activities, membershipType, membershipId, characterId, options) {
+function getCharacterActivities(activities, membershipType, membershipId, characterId, options) {
     return get(apis.getActivityHistory(membershipType, membershipId, characterId), options)
     .then(results => {
         options.page += 1;
         if (results.data.activities) {
 
             activities = activities.concat(results.data.activities);
-            return recurse(activities, membershipType, membershipId, characterId, options);
+            return getCharacterActivities(activities, membershipType, membershipId, characterId, options);
         } else {
             logger.info(activities.length);
             let promises = [];
@@ -55,17 +55,6 @@ function recurse(activities, membershipType, membershipId, characterId, options)
             return Promise.all(promises);
         }
     });
-}
-
-function getCharacterActivities(activities, membershipType, membershipId, characterId, options) {
-    let promises = [];
-    activities.forEach(activity => {
-        if (!activity.activityDetails) {
-            logger.error(activity);
-        }
-        promises.push([addPostGameCarnage(activity, activity.activityDetails.instanceId)]);
-    })
-    return Promise.all(promises);
 }
 
 function addPostGameCarnage(activity, activityId) {
@@ -113,6 +102,31 @@ function getCharacter(membershipInfo) {
 function getPlayerInfo(name) {
     return getAccount(name)
     .then(getCharacter);
+}
+
+function getPlace(characterId, filteredPlayers) {
+    // let index = -1;
+    // // TODO or array.findIndex
+    // let filtered = players.find((player, i) => {
+    //     if (player. = characterId) {
+    //         index = i;
+    //         return i;
+    //     }
+    // })
+    return filteredPlayers.findIndex((item, i) => {
+        //TODO pass in char id
+        return item.characterId === characterId;
+    });
+}
+
+function sortPlayers(a, b) {
+    if (a.score > b.score) {
+        return -1;
+    } else if (a.score < b.score) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 function entry() {
