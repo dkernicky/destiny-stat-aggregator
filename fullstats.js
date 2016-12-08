@@ -50,24 +50,63 @@ function getCharacterActivities(activities, membershipType, membershipId, charac
             logger.info(activities.length);
             let promises = [];
             activities.forEach(activity => {
-                promises.push(addPostGameCarnage(activity, activity.activityDetails.instanceId));
+                promises.push(addPostGameCarnage(characterId, activity, activity.activityDetails.instanceId));
             });
-            return Promise.all(promises);
+            return Promise.all(promises)
+            .then(activities => {
+                logger.trace(activities.length + ':)');
+                //logger.trace(activities);
+            });
         }
     });
 }
 
-function addPostGameCarnage(activity, activityId) {
+function addPostGameCarnage(characterId, activity, activityId) {
     return get(apis.getCarnage(activityId))
     .then(result => {
         return Promise.resolve({
             period: activity.period,
-            activityDetails: activity.activityDetails,
+            activityDetails: activity.activityDetails, // ref id, instance id, mode, type hash override, isprivate
             values: activity.values,
-            entries: result.data.entries,
+            entries: result.data.entries, // all player data
             teams: result.data.teams
         });
+    })
+    .then(result => {
+        return getPostGameAdvancedMetrics(characterId, result);
     });
+}
+
+function getPostGameAdvancedMetrics(characterId, activity) {
+    // medals = activity.entry[n].extended.values
+    // weapons = activity.entry[n].extended.Weapons
+
+    // if (activity.entries.length > 6) {
+    //     logger.error('**************WTF?**************');
+    //     //logger.debug(activity.entries)
+    //     activity.entries.forEach(entry => {
+    //         logger.debug(entry.values.completed);
+    //     })
+    //     logger.error('**************WTF?**************');
+    // }
+    return getPlace(characterId, activity);
+}
+
+function getPlace(characterId, activity) {
+    Promise.resolve(activity.entries.sort((a, b) => {
+        if (a.score.basic.value > b.score.basic.value) {
+            return -1;
+        } else if (a.score.basic.value < b.score.basic.value) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }))
+    .then(result => {
+        return Promise.resolve(result.findIndex((item, i) => {
+            return item.characterId === characterId;
+        }) + 1);
+    })
 }
 
 function getAccount(name) {
@@ -104,31 +143,6 @@ function getPlayerInfo(name) {
     .then(getCharacter);
 }
 
-function getPlace(characterId, filteredPlayers) {
-    // let index = -1;
-    // // TODO or array.findIndex
-    // let filtered = players.find((player, i) => {
-    //     if (player. = characterId) {
-    //         index = i;
-    //         return i;
-    //     }
-    // })
-    return filteredPlayers.findIndex((item, i) => {
-        //TODO pass in char id
-        return item.characterId === characterId;
-    });
-}
-
-function sortPlayers(a, b) {
-    if (a.score > b.score) {
-        return -1;
-    } else if (a.score < b.score) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
 function entry() {
     let name = 'Crimson_Wrath';
     let mode = 'TrialsOfOsiris';
@@ -139,8 +153,8 @@ function entry() {
         return getActivityHistory(result, mode);
     })
     .then(result => {
-        logger.warn(result);
-        logger.debug(result[0][0]);
+        //logger.warn(result);
+        //logger.debug(result[0][0]);
         //logger.debug(result[0][3].values.standing);
 
     });
