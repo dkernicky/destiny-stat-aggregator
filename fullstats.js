@@ -78,6 +78,7 @@ function reduce(activities) {
             kills: 0,
             deaths: 0,
             score: 0,
+            assists: 0,
             precisionKills: 0,
             longestKillSpree: 0,
             longestSingleLife: 0,
@@ -152,7 +153,7 @@ function getPostGameAdvancedMetrics(characterId, activity) {
 }
 
 function analyzePerCharacterStats(activities) {
-    logger.info(activities);
+    //logger.info(activities);
     // titan, hunter, warlock
     let titanKd = '';
     let hunterKd = '';
@@ -216,6 +217,7 @@ function getOtherStats(characterId, activity) {
             //     assists += values.assistsAgainstPlayerTitan.basic.value;
             // }
             stats[key] = activity.values.assists.basic.value;
+            //logger.debug(stats[key])
         } else if (key === 'standing') {
             stats[key] = Number(!(activity.values.standing.basic.value));
         } else if (key === 'completed') {
@@ -293,13 +295,7 @@ function convertToUTC(date) {
 }
 
 function getStats(name, mode, dateStart, dateEnd) {
-    let name = 'Crimson_Wrath';
-    let mode = 'TrialsOfOsiris';
-    mode = 'AllPvP';
-    mode = 'IronBanner';
-    let dateStart = '2016-12-01';
-    let dateEnd = '2016-12-11';
-    getPlayerInfo(name)
+    return getPlayerInfo(name)
     .then((result) => {
         dateStart = convertToUTC(dateStart);
         dateEnd = convertToUTC(dateEnd);
@@ -316,16 +312,32 @@ function getStats(name, mode, dateStart, dateEnd) {
 
     })
     .then(result => {
-        logger.debug(result);
+        //logger.debug(result);
+        return Promise.resolve(result);
     });
 }
 
 function entry() {
-    let name = 'Crimson_Wrath';
+    let names = ['Crimson_Wrath','P1mpag0n','YLOD_Express','russbluedevil44'];
     let mode = 'TrialsOfOsiris';
     mode = 'AllPvP';
     mode = 'IronBanner';
     let dateStart = '2016-12-01';
     let dateEnd = '2016-12-11';
+    let promises = [];
+    names.forEach(name => {
+        promises.push(getStats(name, mode, dateStart, dateEnd));
+    });
+    return Promise.all(promises);
 }
-entry();
+// entry();
+
+module.exports = {
+    getStats: function(names, mode, dateStart, dateEnd) {
+        let promises = [];
+        names.forEach(name => {
+            promises.push(getStats(name, mode, dateStart, dateEnd));
+        });
+        return Promise.all(promises);
+    }
+};
