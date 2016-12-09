@@ -4,9 +4,9 @@ let superagent = require('superagent');
 let Promise = require('bluebird');
 
 function get(f, q) {
-    logger.trace('request url: ' + f);
+    //logger.trace('request url: ' + f);
     let query = q ? q : {};
-    logger.trace('query: ' + JSON.stringify(query));
+    //logger.trace('query: ' + JSON.stringify(query));
     return new Promise((resolve, reject) => {
         superagent
             .get(f)
@@ -23,7 +23,7 @@ function get(f, q) {
     });
 }
 
-function getActivityHistory(playerData, mode) {
+function getActivityHistory(playerData, mode, dateStart, dateEnd) {
     let promises = [];
 
     playerData.characters.forEach(character => {
@@ -32,37 +32,62 @@ function getActivityHistory(playerData, mode) {
             page: 0,
             mode: mode
         };
+        logger.warn(character);
         let activities = [];
-        promises.push(getCharacterActivities(activities, playerData.account.membershipType, playerData.account.membershipId, character.characterId, options))
+        promises.push(getCharacterActivities(activities, playerData.account.membershipType, playerData.account.membershipId, character, options, dateStart, dateEnd))
     })
     return Promise.all(promises);
 }
 
-function getCharacterActivities(activities, membershipType, membershipId, characterId, options) {
-    return get(apis.getActivityHistory(membershipType, membershipId, characterId), options)
+function getCharacterActivities(activities, membershipType, membershipId, character, options, dateStart, dateEnd) {
+    return get(apis.getActivityHistory(membershipType, membershipId, character.characterId), options)
     .then(results => {
         options.page += 1;
         if (results.data.activities) {
 
-            activities = activities.concat(results.data.activities);
-            return getCharacterActivities(activities, membershipType, membershipId, characterId, options);
+            activities = activities.concat(results.data.activities.filter(activity => {
+                let period = activity.period.substring(0, 10)
+                // logger.info('Comparing ' + activity.period.substring(0, 10) + ' and ' + dateStart);
+                // logger.info(period > dateStart && period < dateEnd);
+                //if (activity.period.substring(0, 10) < )
+                if (period >= dateStart && period <= dateEnd) {
+                    return activity;
+                }
+            }));
+            return getCharacterActivities(activities, membershipType, membershipId, character, options, dateStart, dateEnd);
         } else {
             logger.info(activities.length);
             let promises = [];
             activities.forEach(activity => {
-                promises.push(addPostGameCarnage(characterId, activity, activity.activityDetails.instanceId));
+                promises.push(addPostGameCarnage(character.characterId, activity, activity.activityDetails.instanceId));
             });
             return Promise.all(promises)
-            .then(activities => {
-                // logger.trace(activities.length + ':)');
-                //logger.trace(activities);
-                return reduce(activities)
+            .then(reduce)
+            .then(aggregate => {
+                aggregate.classType = character.classType;
+                aggregate.characterId = character.characterId;
+                return Promise.resolve(aggregate);
             });
         }
     });
 }
 
 function reduce(activities) {
+    if (activities.length === 0) {
+        return {
+            kills: 0,
+            deaths: 0,
+            score: 0,
+            precisionKills: 0,
+            longestKillSpree: 0,
+            longestSingleLife: 0,
+            combatRating: 0,
+            place: 0,
+            games: 0,
+            standing: 0,
+            medals: {}
+        };
+    }
     activities = activities.reduce((a, b) => {
         let spree = Math.max(a.longestKillSpree, b.longestKillSpree);
         let life = Math.max(a.longestSingleLife, b.longestSingleLife);
@@ -82,6 +107,7 @@ function reduce(activities) {
         return {
             kills: a.kills + b.kills,
             deaths: a.deaths + b.deaths,
+            assists: a.assists + b.assists,
             score: a.score + b.score,
             precisionKills: a.precisionKills + b.precisionKills,
             longestKillSpree: spree,
@@ -89,6 +115,7 @@ function reduce(activities) {
             combatRating: a.combatRating + b.combatRating,
             place: a.place + b.place,
             games: a.games + b.games,
+            standing: a.standing + b.standing,
             medals: medals
         }
     })
@@ -107,7 +134,6 @@ function addPostGameCarnage(characterId, activity, activityId) {
         });
     })
     .then(result => {
-
         return getPostGameAdvancedMetrics(characterId, result);
     });
 }
@@ -122,92 +148,90 @@ function getPostGameAdvancedMetrics(characterId, activity) {
     .then(result => {
         result[1].place = result[0];
         return Promise.resolve(result[1]);
-    })
-    // .then(result => {
-    //     // kills: 14,
-    //     // deaths: 13,
-    //     // score: 2750,
-    //     // precisionKills: 9,
-    //     // longestKillSpree: 5,
-    //     // longestSingleLife: 90,
-    //     // combatRating: 103.57954114397154,
-    //     // weaponBestType: 'Sniper Rifle',
-    //     // medals: [Object],
-    //     // place: 2
-    //
-    //     logger.info(result)
-    //     return Promise.resolve(result.reduce((a, b) => {
-    //         let spree = a.longestKillSpree < b.longestKillSpree ? a.longestKillSpree : b.longestKillSpree;
-    //         let life = Math.max(a.longestSingleLife, b.longestSingleLife);
-    //         return {
-    //             kills: a.kills + b.kills,
-    //             deaths: a.deaths + b.deaths,
-    //             score: a.score + b.score,
-    //             precisionKills: a.precisionKills + b.precisionKills,
-    //             longestKillSpree: spree,
-    //             longestSingleLife: life,
-    //             combatRating: a.combatRating + b.combatRating,
-    //             place: a.place + b.place
-    //         }
-    //     }));
-    // });
+    });
 }
 
 function analyzePerCharacterStats(activities) {
-    //logger.info(data);
     logger.info(activities);
+    // titan, hunter, warlock
+    let titanKd = '';
+    let hunterKd = '';
+    let warlockKd = '';
+    let titanKad = '';
+    let hunterKad = '';
+    let warlockKad = '';
+    activities.forEach(activity => {
+        if (activity.classType === 0) {
+            titanKd = (activity.kills/activity.deaths).toString().substring(0, 5);
+            titanKad = ((activity.kills + activity.assists)/activity.deaths).toString().substring(0, 5);
+        } else if (activity.classType === 1) {
+            hunterKd = (activity.kills/activity.deaths).toString().substring(0, 5);
+            hunterKad = ((activity.kills + activity.assists)/activity.deaths).toString().substring(0, 5);
+        } else if (activity.classType === 2) {
+            warlockKd = (activity.kills/activity.deaths).toString().substring(0, 5);
+            warlockKad = ((activity.kills + activity.assists)/activity.deaths).toString().substring(0, 5);
+        }
+    })
+    return Promise.resolve({
+        hunterKd : hunterKd,
+        hunterKad: hunterKad,
+        warlockKd : warlockKd,
+        warlockKad: warlockKad,
+        titanKd : titanKd,
+        titanKad: titanKad
+    });
 }
 
 function getOtherStats(characterId, activity) {
-    //logger.info(activity.entries)
     let values = activity.entries.find(entry => {
         return entry.characterId === characterId;
     }).extended.values;
-    //logger.debug(values);
-    let stats = {
-        // totalKillDistance: values.totalKillDistance.basic.value || null,
-        // kills: values.kills.basic.value,
-        // deaths: values.deaths.basic.value,
-        // score: values.score.basic.value,
-        // precisionKills: values.precisionKills.basic.value,
-        // longestKillSpree: values.longestKillSpree.basic.value,
-        // longestSingleLife: values.longestSingleLife.basic.value, //seconds
-        // combatRating: values.combatRating.basic.value,
-        // weaponBestType: values.weaponBestType.basic.displayValue,
-        //weaponKillsSuper: val.extended.values.weaponKillsSuper.basic.displayValue,
 
+    let stats = {
         totalKillDistance: '',
         kills: '',
         deaths: '',
+        assists: '',
         score: '',
         precisionKills: '',
         longestKillSpree: '',
         longestSingleLife: '', //seconds
         combatRating: '',
-        weaponBestType: ''
-
+        weaponBestType: '',
+        standing: '',
+        completed: ''
     }
     for (key in stats) {
         if (key === 'weaponBestType') {
             stats[key] = values[key] ? values[key].basic.displayValue : null;
+        } else if (key === 'assists') {
+            let assists = 0;
+            // if (values.assistsAgainstPlayerHunter) {
+            //     assists += values.assistsAgainstPlayerHunter.basic.value;
+            // }
+            // if (values.assistsAgainstPlayerWarlock) {
+            //     assists += values.assistsAgainstPlayerWarlock.basic.value;
+            // }
+            // if (values.assistsAgainstPlayerTitan) {
+            //     assists += values.assistsAgainstPlayerTitan.basic.value;
+            // }
+            stats[key] = activity.values.assists.basic.value;
+        } else if (key === 'standing') {
+            stats[key] = Number(!(activity.values.standing.basic.value));
+        } else if (key === 'completed') {
+            stats[key] = activity.values.completed.basic.value;
         } else {
             stats[key] = values[key] ? values[key].basic.value : null;
         }
     }
     stats.games = 1;
     stats.medals = {};
-
     for (key in values) {
-        //logger.warn('BEFORE' + item);
         if (key.indexOf('medal') !== -1) {
             stats.medals[key] = values[key].basic.value;
         }
     }
-    // logger.error('AFTER');
-    // logger.error(medals);
-    //logger.error(stats);
     return Promise.resolve(stats);
-    //logger.info(val.extended.values)
 }
 
 function getWeapons(characterId, activity) {
@@ -264,21 +288,44 @@ function getPlayerInfo(name) {
     .then(getCharacter);
 }
 
-function entry() {
+function convertToUTC(date) {
+    return date;
+}
+
+function getStats(name, mode, dateStart, dateEnd) {
     let name = 'Crimson_Wrath';
     let mode = 'TrialsOfOsiris';
     mode = 'AllPvP';
-    mode = 'Lockdown';
+    mode = 'IronBanner';
+    let dateStart = '2016-12-01';
+    let dateEnd = '2016-12-11';
     getPlayerInfo(name)
     .then((result) => {
-        return getActivityHistory(result, mode);
+        dateStart = convertToUTC(dateStart);
+        dateEnd = convertToUTC(dateEnd);
+        return getActivityHistory(result, mode, dateStart, dateEnd);
     })
     .then(result => {
-        return analyzePerCharacterStats(result);
+        var promises = [];
+        promises.push(analyzePerCharacterStats(result));
+        promises.push(reduce(result));
+        return Promise.all(promises);
         //logger.warn(result);
         //logger.debug(result[0][0]);
         //logger.debug(result[0][3].values.standing);
 
+    })
+    .then(result => {
+        logger.debug(result);
     });
+}
+
+function entry() {
+    let name = 'Crimson_Wrath';
+    let mode = 'TrialsOfOsiris';
+    mode = 'AllPvP';
+    mode = 'IronBanner';
+    let dateStart = '2016-12-01';
+    let dateEnd = '2016-12-11';
 }
 entry();
