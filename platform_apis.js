@@ -54,11 +54,16 @@ function getCarnage(activityId) {
     return `${getBaseUrl()}/Stats/PostGameCarnageReport/${activityId}/`;
 }
 
+function getItem(id) {
+    return `${getBaseUrl()}/Manifest/6/${id}/`;
+}
+
 module.exports = {
     getMembershipId,
     getItems,
     getActivityHistory,
     getAggregateActivityStats,
     getStats,
-    getCarnage
+    getCarnage,
+    getItem
 };

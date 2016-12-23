@@ -104,6 +104,7 @@ function reduce(activities) {
         let spree = Math.max(a.longestKillSpree, b.longestKillSpree);
         let life = Math.max(a.longestSingleLife, b.longestSingleLife);
         let medals = {};
+        let weapons = [];
         for (aMedals in a.medals) {
             if (b.medals[aMedals]) {
                 medals[aMedals] = a.medals[aMedals] + b.medals[aMedals];
@@ -116,6 +117,33 @@ function reduce(activities) {
                 medals[bMedals] = b.medals[bMedals];
             }
         }
+        if (a.weapons) {
+            a.weapons.forEach(aWeapon => {
+                if (b.weapons) {
+                    b.weapons.forEach(bWeapon => {
+                        if (aWeapon.name === bWeapon.name) {
+                            aWeapon.kills += bWeapon.kills;
+                            aWeapon.precisionKills += bWeapon.precisionKills;
+                        }
+                    });
+                }
+                weapons.push(aWeapon);
+            });
+        }
+        if (b.weapons) {
+            b.weapons.forEach(bWeapon => {
+                let matchFound = false;
+                weapons.forEach(weapon => {
+                    if (weapon.name === bWeapon.name) {
+                        matchFound = true;
+                    }
+                });
+                if (!matchFound) {
+                    weapons.push(bWeapon);
+                }
+            });
+        }
+        //logger.error(weapons);
         return {
             kills: a.kills + b.kills,
             deaths: a.deaths + b.deaths,
@@ -128,7 +156,8 @@ function reduce(activities) {
             place: a.place + b.place,
             games: a.games + b.games,
             standing: a.standing + b.standing,
-            medals: medals
+            medals: medals,
+            weapons: weapons
         }
     })
     return Promise.resolve(activities)
@@ -156,9 +185,11 @@ function getPostGameAdvancedMetrics(characterId, activity) {
     let promises = [];
     promises.push(getPlace(characterId, activity));
     promises.push(getOtherStats(characterId, activity));
+    promises.push(getWeaponStats(characterId, activity));
     return Promise.all(promises)
     .then(result => {
         result[1].place = result[0];
+        result[1].weapons = result[2];
         return Promise.resolve(result[1]);
     });
 }
@@ -192,6 +223,29 @@ function analyzePerCharacterStats(activities) {
         titanKd : titanKd,
         titanKad: titanKad
     });
+}
+
+function getWeaponStats(characterId, activity) {
+    let weapons = activity.entries.find(entry => {
+        return entry.characterId === characterId;
+    }).extended.weapons;
+    // logger.warn(values);
+    let promises = [];
+    weapons.forEach(weapon => {
+        //logger.warn(weapon);
+        promises.push(get(apis.getItem(weapon.referenceId))
+            .then(result => {
+                // logger.warn(result.data.inventoryItem.itemName);
+                return Promise.resolve({
+                    name: result.data.inventoryItem.itemName,
+                    kills: weapon.values.uniqueWeaponKills.basic.value,
+                    precisionKills: weapon.values.uniqueWeaponPrecisionKills.basic.value
+                    //percentPrecision: weapon.values.uniqueWeaponKillsPrecisionKills.basic.value
+                })
+            })
+        );
+    });
+    return Promise.all(promises);
 }
 
 function getOtherStats(characterId, activity) {
