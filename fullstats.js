@@ -3,7 +3,7 @@ let apis = require('./platform_apis');
 let superagent = require('superagent');
 let Promise = require('bluebird');
 
-function get(f, q) {
+function get(f, q, attempt) {
     //logger.trace('request url: ' + f);
     let query = q ? q : {};
     //logger.trace('query: ' + JSON.stringify(query));
@@ -19,7 +19,17 @@ function get(f, q) {
                 } else {
                     resolve(res.body.Response);
                 }
-            });
+            })
+    })
+    .catch(err => {
+        logger.error('CAUGHT ERROR ' + err);
+        // attempt = attempt ? attempt : 1;
+        // if (attempt < 5) {
+        //     attempt += 1;
+        //     logger.info(`trying request again... (attempt ${attempt})`);
+        //     return get(f, q, attempt);
+        // }
+
     });
 }
 
@@ -30,7 +40,8 @@ function getActivityHistory(playerData, mode, dateStart, dateEnd) {
         let options = {
             count: 100,
             page: 0,
-            mode: mode
+            mode: mode,
+            groups: 'General,Medals,Weapons,Enemies'
         };
         logger.warn(character);
         let activities = [];
@@ -313,6 +324,7 @@ function getStats(name, mode, dateStart, dateEnd) {
     })
     .then(result => {
         //logger.debug(result);
+        result[1].name = name;
         return Promise.resolve(result);
     });
 }

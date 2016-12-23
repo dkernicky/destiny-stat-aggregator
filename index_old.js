@@ -109,4 +109,4 @@ function getStatsMultiple(dateStart, dateEnd, modes, names) {
     });
 }
 
-getStatsMultiple('2016-09-20', '2016-12-06', 'AllPvP', ['P1mpag0n']);
+getStatsMultiple('2016-12-02', '2016-12-10', 'IronBanner', ['Crimson_Wrath','P1mpag0n','YLOD_Express', 'russbluedevil44']);
